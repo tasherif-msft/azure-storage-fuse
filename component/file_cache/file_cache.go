@@ -438,7 +438,6 @@ func newObjAttr(path string, info fs.FileInfo) *internal.ObjAttr {
 		Mode:  info.Mode(),
 		Mtime: time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec),
 		Atime: time.Unix(stat.Atim.Sec, stat.Atim.Nsec),
-		Ctime: time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec),
 	}
 
 	if info.Mode()&os.ModeSymlink != 0 {

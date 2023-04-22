@@ -40,6 +40,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -401,6 +402,16 @@ func (dl *Datalake) GetAttr(name string) (attr *internal.ObjAttr, err error) {
 		return attr, err
 	}
 
+	uid := int(0xffffffff)
+	gid := int(0xffffffff)
+	if prop.XMsOwner() != "" {
+		uid, _ = strconv.Atoi(prop.XMsOwner())
+	}
+
+	if prop.XMsGroup() != "" {
+		gid, _ = strconv.Atoi(prop.XMsGroup())
+	}
+
 	attr = &internal.ObjAttr{
 		Path:   name,
 		Name:   filepath.Base(name),
@@ -408,10 +419,12 @@ func (dl *Datalake) GetAttr(name string) (attr *internal.ObjAttr, err error) {
 		Mode:   mode,
 		Mtime:  lastModified,
 		Atime:  lastModified,
-		Ctime:  lastModified,
 		Crtime: lastModified,
 		Flags:  internal.NewFileBitMap(),
+		Uid:    uid,
+		Gid:    gid,
 	}
+
 	parseProperties(attr, prop.XMsProperties())
 	if azbfs.PathResourceDirectory == azbfs.PathResourceType(prop.XMsResourceType()) {
 		attr.Flags = internal.NewDirBitMap()
@@ -483,6 +496,16 @@ func (dl *Datalake) List(prefix string, marker *string, count int32) ([]*interna
 			log.Err("Datalake::List : Failed to get file length for %s", *pathInfo.Name)
 		}
 
+		uid := int(0xffffffff)
+		gid := int(0xffffffff)
+		if pathInfo.Owner != nil {
+			uid, _ = strconv.Atoi(*pathInfo.Owner)
+		}
+
+		if pathInfo.Group != nil {
+			gid, _ = strconv.Atoi(*pathInfo.Group)
+		}
+
 		attr := &internal.ObjAttr{
 			Path:   *pathInfo.Name,
 			Name:   filepath.Base(*pathInfo.Name),
@@ -490,10 +513,12 @@ func (dl *Datalake) List(prefix string, marker *string, count int32) ([]*interna
 			Mode:   mode,
 			Mtime:  pathInfo.LastModifiedTime(),
 			Atime:  pathInfo.LastModifiedTime(),
-			Ctime:  pathInfo.LastModifiedTime(),
 			Crtime: pathInfo.LastModifiedTime(),
 			Flags:  internal.NewFileBitMap(),
+			Uid:    uid,
+			Gid:    gid,
 		}
+
 		if pathInfo.IsDirectory != nil && *pathInfo.IsDirectory {
 			attr.Flags = internal.NewDirBitMap()
 			attr.Mode = attr.Mode | os.ModeDir
@@ -588,26 +613,40 @@ func (dl *Datalake) ChangeMod(name string, mode os.FileMode) error {
 }
 
 // ChangeOwner : Change owner of a path
-func (dl *Datalake) ChangeOwner(name string, _ int, _ int) error {
-	log.Trace("Datalake::ChangeOwner : name %s", name)
+func (dl *Datalake) ChangeOwner(name string, uid int, gid int) error {
+	log.Trace("Datalake::ChangeOwner : name %s [%v:%v]", name, uid, gid)
 
-	if dl.Config.ignoreAccessModifiers {
-		// for operations like git clone where transaction fails if chown is not successful
-		// return success instead of ENOSYS
-		return nil
+	fileURL := dl.Filesystem.NewRootDirectoryURL().NewFileURL(filepath.Join(dl.Config.prefixPath, name))
+
+	currPerm, err := fileURL.GetAccessControl(context.Background())
+	e := storeDatalakeErrToErr(err)
+	if e == ErrFileNotFound {
+		return syscall.ENOENT
+	} else if err != nil {
+		log.Err("Datalake::ChangeOwner : Failed to get mode of file %s [%s]", name, err.Error())
+		return err
 	}
 
-	// TODO: This is not supported for now.
-	// fileURL := dl.Filesystem.NewRootDirectoryURL().NewFileURL(filepath.Join(dl.Config.prefixPath, name))
-	// group := strconv.Itoa(gid)
-	// owner := strconv.Itoa(uid)
-	// _, err := fileURL.SetAccessControl(context.Background(), azbfs.BlobFSAccessControl{Group: group, Owner: owner})
-	// e := storeDatalakeErrToErr(err)
-	// if e == ErrFileNotFound {
-	// 	return syscall.ENOENT
-	// } else if err != nil {
-	// 	log.Err("Datalake::ChangeOwner : Failed to change ownership of file %s to %s [%s]", name, mode, err.Error())
-	// 	return err
-	// }
-	return syscall.ENOTSUP
+	if gid != 0xffffffff {
+		// id := uuid.New()
+		// currPerm.Group = uuid.New().String()
+		currPerm.Group = "$" + strconv.Itoa(gid)
+	}
+
+	if uid != 0xffffffff {
+		//currPerm.Owner = uuid.New().String()
+		currPerm.Owner = "$" + strconv.Itoa(uid)
+	}
+
+	currPerm.ACL = ""
+	_, err = fileURL.SetAccessControl(context.Background(), currPerm)
+	e = storeDatalakeErrToErr(err)
+	if e == ErrFileNotFound {
+		return syscall.ENOENT
+	} else if err != nil {
+		log.Err("Datalake::ChangeOwner : Failed to change ownership of file %s to %v:%v [%s]", name, uid, gid, err.Error())
+		return err
+	}
+
+	return err
 }

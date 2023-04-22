@@ -11,6 +11,7 @@ require (
 	github.com/JeffreyRichter/enum v0.0.0-20180725232043-2567042f9cda
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/golang/mock v1.6.0
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/montanaflynn/stats v0.6.6

@@ -451,10 +451,11 @@ func (bb *BlockBlob) getAttrUsingRest(name string) (attr *internal.ObjAttr, err 
 		Mode:   0,
 		Mtime:  prop.LastModified(),
 		Atime:  prop.LastModified(),
-		Ctime:  prop.LastModified(),
 		Crtime: prop.CreationTime(),
 		Flags:  internal.NewFileBitMap(),
 		MD5:    prop.ContentMD5(),
+		Uid:    0xffffffff,
+		Gid:    0xffffffff,
 	}
 
 	parseMetadata(attr, prop.NewMetadata())
@@ -590,10 +591,11 @@ func (bb *BlockBlob) List(prefix string, marker *string, count int32) ([]*intern
 			Mode:   0,
 			Mtime:  blobInfo.Properties.LastModified,
 			Atime:  dereferenceTime(blobInfo.Properties.LastAccessedOn, blobInfo.Properties.LastModified),
-			Ctime:  blobInfo.Properties.LastModified,
 			Crtime: dereferenceTime(blobInfo.Properties.CreationTime, blobInfo.Properties.LastModified),
 			Flags:  internal.NewFileBitMap(),
 			MD5:    blobInfo.Properties.ContentMD5,
+			Uid:    0xffffffff,
+			Gid:    0xffffffff,
 		}
 
 		parseMetadata(attr, blobInfo.Metadata)
@@ -631,10 +633,11 @@ func (bb *BlockBlob) List(prefix string, marker *string, count int32) ([]*intern
 					Mode:  os.ModeDir,
 					Mtime: time.Now(),
 					Flags: internal.NewDirBitMap(),
+					Uid:   0xffffffff,
+					Gid:   0xffffffff,
 				}
 				attr.Atime = attr.Mtime
 				attr.Crtime = attr.Mtime
-				attr.Ctime = attr.Mtime
 				attr.Flags.Set(internal.PropFlagMetadataRetrieved)
 				attr.Flags.Set(internal.PropFlagModeDefault)
 				blobList = append(blobList, attr)

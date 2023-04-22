@@ -345,7 +345,7 @@ func (lf *Libfuse) fillStat(attr *internal.ObjAttr, stbuf *C.stat_t) {
 	(*stbuf).st_atim.tv_sec = C.long(attr.Atime.Unix())
 	(*stbuf).st_atim.tv_nsec = 0
 
-	(*stbuf).st_ctim.tv_sec = C.long(attr.Ctime.Unix())
+	(*stbuf).st_ctim.tv_sec = C.long(attr.Atime.Unix())
 	(*stbuf).st_ctim.tv_nsec = 0
 
 	(*stbuf).st_mtim.tv_sec = C.long(attr.Mtime.Unix())
@@ -1064,7 +1064,21 @@ func libfuse_chown(path *C.char, uid C.uid_t, gid C.gid_t, fi *C.fuse_file_info_
 	name := trimFusePath(path)
 	name = common.NormalizeObjectName(name)
 	log.Trace("Libfuse::libfuse_chown : %s", name)
-	// TODO: Implement
+
+	err := fuseFS.NextComponent().Chown(
+		internal.ChownOptions{
+			Name:  name,
+			Owner: int(uid) & 0xffffffff,
+			Group: int(gid) & 0xffffffff,
+		})
+	if err != nil {
+		log.Err("Libfuse::libfuse_chown : error in chown of %s [%s]", name, err.Error())
+		if os.IsNotExist(err) {
+			return -C.ENOENT
+		}
+		return -C.EIO
+	}
+
 	return 0
 }
 

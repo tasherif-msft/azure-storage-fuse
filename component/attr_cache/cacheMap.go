@@ -106,6 +106,5 @@ func (value *attrCacheItem) setSize(size int64) {
 
 func (value *attrCacheItem) setMode(mode os.FileMode) {
 	value.attr.Mode = mode
-	value.attr.Ctime = time.Now()
 	value.cachedAt = time.Now()
 }
