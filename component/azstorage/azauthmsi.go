@@ -38,6 +38,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-storage-fuse/v2/common/log"
+	"github.com/Azure/go-autorest/autorest/adal"
 
 	"github.com/Azure/azure-storage-azcopy/v10/azbfs"
 	"github.com/Azure/azure-storage-azcopy/v10/common"
@@ -60,6 +61,10 @@ func (azmsi *azAuthMSI) fetchToken() (*common.OAuthTokenInfo, error) {
 	// and does not work in all types of clouds (US, German, China etc).
 	// resource := azure.PublicCloud.ResourceIdentifiers.Datalake
 	// resource := azure.PublicCloud.ResourceIdentifiers.Storage
+
+	var token *adal.Token
+	var err error
+
 	oAuthTokenInfo := &common.OAuthTokenInfo{
 		Identity: true,
 		IdentityInfo: common.IdentityInfo{
@@ -68,10 +73,18 @@ func (azmsi *azAuthMSI) fetchToken() (*common.OAuthTokenInfo, error) {
 			MSIResID: azmsi.config.ResourceID},
 	}
 
-	token, err := oAuthTokenInfo.GetNewTokenFromMSI(context.Background())
-	if err != nil {
-		return nil, err
+	if azmsi.config.ActiveDirectoryEndpoint != "" {
+		token, err = azmsi.GetNewTokenFromMSIWithEndPoint(oAuthTokenInfo, azmsi.config.ActiveDirectoryEndpoint)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		token, err = oAuthTokenInfo.GetNewTokenFromMSI(context.Background())
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	oAuthTokenInfo.Token = *token
 	return oAuthTokenInfo, nil
 }
