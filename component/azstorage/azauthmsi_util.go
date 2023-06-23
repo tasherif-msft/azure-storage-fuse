@@ -45,6 +45,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-storage-fuse/v2/common/log"
 	"github.com/Azure/go-autorest/autorest/adal"
 
 	"github.com/Azure/azure-storage-azcopy/v10/common"
@@ -83,6 +84,8 @@ func (azmsi *azAuthMSI) GetNewTokenFromMSIWithEndPoint(credInfo *common.OAuthTok
 	}
 
 	ctx := context.Background()
+
+	log.Info("azAuthMSI::GetNewTokenFromMSIWithEndPoint : Getting token from %s", endpoint)
 
 	// Try Azure VM since there was an error in trying Arc VM
 	reqAzureVM, respAzureVM, errAzureVM := azmsi.queryIMDS(ctx, credInfo, endpoint, targetResource, common.IMDSAPIVersionAzureVM) //nolint:staticcheck
@@ -153,6 +156,10 @@ func (azmsi *azAuthMSI) queryIMDS(ctx context.Context, credInfo *common.OAuthTok
 	req = req.WithContext(ctx)
 	// In case of some other process (Http Server) listening at 127.0.0.1:40342 , we do not want to wait forever for it to serve request
 	msiTokenHTTPClient.Timeout = 10 * time.Second
+	
+	reqDump, _ := httputil.DumpRequest(req, true)
+	log.Info("azAuthMSI::queryIMDS : Request to fetch token : %v", string(reqDump))
+
 	// Send request
 	resp, err := msiTokenHTTPClient.Do(req)
 	// Unset the timeout back

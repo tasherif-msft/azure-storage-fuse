@@ -74,11 +74,13 @@ func (azmsi *azAuthMSI) fetchToken() (*common.OAuthTokenInfo, error) {
 	}
 
 	if azmsi.config.ActiveDirectoryEndpoint != "" {
+		log.Info("azAuthMSI::fetchToken : AAD Endpoint is set")
 		token, err = azmsi.GetNewTokenFromMSIWithEndPoint(oAuthTokenInfo, azmsi.config.ActiveDirectoryEndpoint)
 		if err != nil {
 			return nil, err
 		}
 	} else {
+		log.Info("azAuthMSI::fetchToken : Going with default AAD endpoint")
 		token, err = oAuthTokenInfo.GetNewTokenFromMSI(context.Background())
 		if err != nil {
 			return nil, err
