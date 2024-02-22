@@ -5,6 +5,7 @@ import json
 import argparse
 import numpy as np
 from multiprocessing import Pool
+from tensorflow.keras import utils
 from tensorflow.keras.applications import resnet50
 from tensorflow.keras.preprocessing.image import load_img
 from tensorflow.keras.preprocessing.image import img_to_array
@@ -14,10 +15,10 @@ from tensorflow.keras.applications.imagenet_utils import decode_predictions
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #15
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-
 def classify_images(images):
     # we need to load the model within the process since we can't share a model across processes
     resnet_model = resnet50.ResNet50(weights='imagenet')
+    utils.disable_interactive_logging()
     
     tic = time.time()
     sys.stdout.write('starting to process {} images in this thread at time: {}\n'.format(len(images), time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(tic))))
